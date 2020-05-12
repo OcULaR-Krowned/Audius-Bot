@@ -4,9 +4,12 @@ const chalk = require('chalk');
 var os = require('os-utils');
 const config = require('./config.json');
 const Audius = require('@audius/audius.js');
-const audius = new Audius({analyticsId: 'audius_discord_bot'});
+const db = require('rethinkdb');
 
-const opus = require('@discordjs/opus');
+const audius = new Audius({
+  /* Give this client a descriptive ID describing this application. */
+  analyticsId: 'audius_discord_bot'
+})
 
 //GENERAL COMMANDS
 const help = require('./BOT/commands/general/help.js');
@@ -16,6 +19,18 @@ const status = require('./BOT/commands/general/status.js');
 
 //MUSIC COMMANDS
 const play = require('./BOT/commands/music/play.js');
+const stop = require('./BOT/commands/music/stop.js');
+const skip = require('./BOT/commands/music/skip.js');
+
+//LEVEL ADDING
+const addXP = require('./BOT/levels/addXP.js');
+const addGuildXP = require('./BOT/levels/addGuildXP.js');
+
+//LEVEL COMMANDS
+const leaderboard = require('./BOT/levels/leaderboard.js');
+const level = require('./BOT/levels/level.js');
+
+//DATABASE COMMANDS
 
 
 const setPresence = require('./BOT/onReady/setPresence.js');
@@ -28,9 +43,30 @@ const setPresence = require('./BOT/onReady/setPresence.js');
 client.on('ready', () => {
   setInterval(() => {
     setPresence(client, config);
-  }, 5000);
+  }, 30000);
   console.log(chalk.grey('[' + chalk.green('ONLINE') + ']Logged in as: ' + chalk.green(client.user.tag)));
+  db.connect({ 
+    host: 'localhost', 
+    port: '28015', 
+    db: 'Audius', 
+    table: 'Users'}
+, function(err, conn) {
+    global.conn = conn;
+    if(err)console.log(chalk.red(err));
+    console.log(chalk.grey('[' + chalk.cyan('DB') + ']Logged in to Database: ' + chalk.cyan(conn.db) + ' Address: ' + chalk.cyan(conn.host + ':' + conn.port)));
 });
+});
+
+
+var mapUser = [];
+var mapGuild = [];
+
+setInterval(() => {
+  mapUser = [];
+  mapGuil = [];
+}, 60000);
+
+var servers = {};
 
 
 client.on('message', msg => {
@@ -39,7 +75,18 @@ client.on('message', msg => {
 
   if(msg.author != client.user){
     if(!(msg.channel instanceof Discord.DMChannel)){
+
+
+      //LEVELS
+      addXP(msg, mapUser, Discord, client);
+      addGuildXP(msg, mapGuild, Discord, client);
+
+
+
+
       switch(msg.content.toLocaleLowerCase().split(' ')[0]) {
+
+        //GENERAL COMMANDS
         case config.prefix + 'help':
             help(msg, Discord, client, command, args, config);
           break;
@@ -52,9 +99,34 @@ client.on('message', msg => {
           case config.prefix + 'status':
             status(msg, Discord, client, os);
           break;
+
+          //MUSIC COMMANDS
           case config.prefix + 'play':
-            play(msg, Discord, client, args, audius);
+            play(msg, Discord, client, args, audius, servers);
           break;
+
+          case config.prefix + 'stop':
+            stop(msg, Discord, client, args, servers);
+          break;
+
+          case config.prefix + 'skip':
+            skip(msg, Discord, client, servers, audius);
+          break;
+
+          //LEVEL COMMANDS
+
+          case config.prefix + 'leaderboard':
+              leaderboard(msg, Discord, client);
+          break;
+
+          case config.prefix + 'level':
+              level(msg, Discord, client);
+          break;
+
+
+          
+
+          //DATABASE COMMANDS
     }
     } 
   }
