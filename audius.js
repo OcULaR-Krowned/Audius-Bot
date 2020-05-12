@@ -67,7 +67,7 @@ setInterval(() => {
 }, 60000);
 
 var servers = {};
-
+var skips = ();
 
 client.on('message', msg => {
   const args = msg.content.slice(config.prefix.length).trim().split(/ +/g);
